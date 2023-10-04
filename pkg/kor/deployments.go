@@ -32,21 +32,6 @@ func ProcessNamespaceDeployments(clientset kubernetes.Interface, namespace strin
 	return deploymentsWithoutReplicas, nil
 }
 
-func GetUnusedDeployments(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface) {
-	namespaces := SetNamespaceList(includeExcludeLists, clientset)
-
-	for _, namespace := range namespaces {
-		diff, err := ProcessNamespaceDeployments(clientset, namespace)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
-			continue
-		}
-		output := FormatOutput(namespace, diff, "Deployments")
-		fmt.Println(output)
-		fmt.Println()
-	}
-}
-
 func GetUnusedDeploymentsStructured(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface, outputFormat string) (string, error) {
 	namespaces := SetNamespaceList(includeExcludeLists, clientset)
 	response := make(map[string]map[string][]string)
@@ -57,23 +42,30 @@ func GetUnusedDeploymentsStructured(includeExcludeLists IncludeExcludeLists, cli
 			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
 			continue
 		}
-		resourceMap := make(map[string][]string)
-		resourceMap["Deployments"] = diff
-		response[namespace] = resourceMap
+		if outputFormat == "" || outputFormat == "table" {
+			output := FormatOutput(namespace, diff, "Deployments")
+			fmt.Println(output)
+			fmt.Println()
+		} else {
+			resourceMap := make(map[string][]string)
+			resourceMap["Deployments"] = diff
+			response[namespace] = resourceMap
+		}
 	}
 
 	jsonResponse, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
 		return "", err
 	}
-
 	if outputFormat == "yaml" {
 		yamlResponse, err := yaml.JSONToYAML(jsonResponse)
 		if err != nil {
 			fmt.Printf("err: %v\n", err)
 		}
 		return string(yamlResponse), nil
-	} else {
+	} else if outputFormat == "json" {
 		return string(jsonResponse), nil
+	} else {
+		return "", nil
 	}
 }

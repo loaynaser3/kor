@@ -128,36 +128,25 @@ func processNamespaceCM(clientset kubernetes.Interface, namespace string) ([]str
 
 }
 
-func GetUnusedConfigmaps(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface) {
-	namespaces := SetNamespaceList(includeExcludeLists, clientset)
-
-	for _, namespace := range namespaces {
-		diff, err := processNamespaceCM(clientset, namespace)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
-			continue
-		}
-		output := FormatOutput(namespace, diff, "Config Maps")
-		fmt.Println(output)
-		fmt.Println()
-	}
-}
-
 func GetUnusedConfigmapsStructured(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface, outputFormat string) (string, error) {
 	namespaces := SetNamespaceList(includeExcludeLists, clientset)
 	response := make(map[string]map[string][]string)
-
 	for _, namespace := range namespaces {
 		diff, err := processNamespaceCM(clientset, namespace)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
 			continue
 		}
-		resourceMap := make(map[string][]string)
-		resourceMap["ConfigMap"] = diff
-		response[namespace] = resourceMap
+		if outputFormat == "" || outputFormat == "table" {
+			output := FormatOutput(namespace, diff, "Config Maps")
+			fmt.Println(output)
+			fmt.Println()
+		} else {
+			resourceMap := make(map[string][]string)
+			resourceMap["ConfigMap"] = diff
+			response[namespace] = resourceMap
+		}
 	}
-
 	jsonResponse, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
 		return "", err
@@ -169,8 +158,10 @@ func GetUnusedConfigmapsStructured(includeExcludeLists IncludeExcludeLists, clie
 			fmt.Printf("err: %v\n", err)
 		}
 		return string(yamlResponse), nil
-	} else {
+	} else if outputFormat == "json" {
 		return string(jsonResponse), nil
+	} else {
+		return "", nil
 	}
 
 }

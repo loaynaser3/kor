@@ -88,21 +88,6 @@ func processNamespaceIngresses(clientset kubernetes.Interface, namespace string)
 
 }
 
-func GetUnusedIngresses(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface) {
-	namespaces := SetNamespaceList(includeExcludeLists, clientset)
-
-	for _, namespace := range namespaces {
-		diff, err := processNamespaceIngresses(clientset, namespace)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
-			continue
-		}
-		output := FormatOutput(namespace, diff, "Ingresses")
-		fmt.Println(output)
-		fmt.Println()
-	}
-}
-
 func GetUnusedIngressesStructured(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface, outputFormat string) (string, error) {
 	namespaces := SetNamespaceList(includeExcludeLists, clientset)
 	response := make(map[string]map[string][]string)
@@ -113,9 +98,15 @@ func GetUnusedIngressesStructured(includeExcludeLists IncludeExcludeLists, clien
 			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
 			continue
 		}
-		resourceMap := make(map[string][]string)
-		resourceMap["Ingresses"] = diff
-		response[namespace] = resourceMap
+		if outputFormat == "" || outputFormat == "table" {
+			output := FormatOutput(namespace, diff, "Ingresses")
+			fmt.Println(output)
+			fmt.Println()
+		} else {
+			resourceMap := make(map[string][]string)
+			resourceMap["Ingresses"] = diff
+			response[namespace] = resourceMap
+		}
 	}
 
 	jsonResponse, err := json.MarshalIndent(response, "", "  ")
@@ -129,7 +120,9 @@ func GetUnusedIngressesStructured(includeExcludeLists IncludeExcludeLists, clien
 			fmt.Printf("err: %v\n", err)
 		}
 		return string(yamlResponse), nil
-	} else {
+	} else if outputFormat == "json" {
 		return string(jsonResponse), nil
+	} else {
+		return "", nil
 	}
 }
