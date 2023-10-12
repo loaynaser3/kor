@@ -181,7 +181,9 @@ func GetUnusedSecretsStructured(includeExcludeLists IncludeExcludeLists, clients
 			fmt.Printf("err: %v\n", err)
 		}
 		return string(yamlResponse), nil
-	} else {
+	} else if outputFormat == "json" {
 		return string(jsonResponse), nil
+	} else {
+		return "", nil
 	}
 }

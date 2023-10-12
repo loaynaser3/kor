@@ -53,22 +53,6 @@ func processNamespacePvcs(clientset kubernetes.Interface, namespace string) ([]s
 	return diff, nil
 }
 
-func GetUnusedPvcs(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface) {
-	namespaces := SetNamespaceList(includeExcludeLists, clientset)
-
-	for _, namespace := range namespaces {
-		diff, err := processNamespacePvcs(clientset, namespace)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
-			continue
-		}
-		output := FormatOutput(namespace, diff, "Pvcs")
-		fmt.Println(output)
-		fmt.Println()
-	}
-
-}
-
 func GetUnusedPvcsStructured(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface, outputFormat string) (string, error) {
 	namespaces := SetNamespaceList(includeExcludeLists, clientset)
 	response := make(map[string]map[string][]string)
@@ -79,11 +63,17 @@ func GetUnusedPvcsStructured(includeExcludeLists IncludeExcludeLists, clientset 
 			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
 			continue
 		}
-		if len(diff) > 0 {
-			if response[namespace] == nil {
-				response[namespace] = make(map[string][]string)
+		if outputFormat == "" || outputFormat == "table" {
+			output := FormatOutput(namespace, diff, "Pvcs")
+			fmt.Println(output)
+			fmt.Println()
+		} else {
+			if len(diff) > 0 {
+				if response[namespace] == nil {
+					response[namespace] = make(map[string][]string)
+				}
+				response[namespace]["Pvc"] = diff
 			}
-			response[namespace]["Pvc"] = diff
 		}
 	}
 
@@ -98,7 +88,9 @@ func GetUnusedPvcsStructured(includeExcludeLists IncludeExcludeLists, clientset 
 			fmt.Printf("err: %v\n", err)
 		}
 		return string(yamlResponse), nil
-	} else {
+	} else if outputFormat == "json" {
 		return string(jsonResponse), nil
+	} else {
+		return "", nil
 	}
 }

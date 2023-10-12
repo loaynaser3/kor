@@ -66,21 +66,6 @@ func processNamespaceRoles(clientset kubernetes.Interface, namespace string) ([]
 
 }
 
-func GetUnusedRoles(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface) {
-	namespaces := SetNamespaceList(includeExcludeLists, clientset)
-
-	for _, namespace := range namespaces {
-		diff, err := processNamespaceRoles(clientset, namespace)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
-			continue
-		}
-		output := FormatOutput(namespace, diff, "Roles")
-		fmt.Println(output)
-		fmt.Println()
-	}
-}
-
 func GetUnusedRolesStructured(includeExcludeLists IncludeExcludeLists, clientset kubernetes.Interface, outputFormat string) (string, error) {
 	namespaces := SetNamespaceList(includeExcludeLists, clientset)
 	response := make(map[string]map[string][]string)
@@ -91,9 +76,16 @@ func GetUnusedRolesStructured(includeExcludeLists IncludeExcludeLists, clientset
 			fmt.Fprintf(os.Stderr, "Failed to process namespace %s: %v\n", namespace, err)
 			continue
 		}
-		resourceMap := make(map[string][]string)
-		resourceMap["Roles"] = diff
-		response[namespace] = resourceMap
+		if outputFormat == "" || outputFormat == "table" {
+			output := FormatOutput(namespace, diff, "Roles")
+			fmt.Println(output)
+			fmt.Println()
+		} else {
+			resourceMap := make(map[string][]string)
+			resourceMap["Roles"] = diff
+			response[namespace] = resourceMap
+		}
+
 	}
 
 	jsonResponse, err := json.MarshalIndent(response, "", "  ")
@@ -107,7 +99,9 @@ func GetUnusedRolesStructured(includeExcludeLists IncludeExcludeLists, clientset
 			fmt.Printf("err: %v\n", err)
 		}
 		return string(yamlResponse), nil
-	} else {
+	} else if outputFormat == "json" {
 		return string(jsonResponse), nil
+	} else {
+		return "", nil
 	}
 }

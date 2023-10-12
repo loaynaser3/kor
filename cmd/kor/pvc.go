@@ -14,14 +14,10 @@ var pvcCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		clientset := kor.GetKubeClient(kubeconfig)
-		if outputFormat == "json" || outputFormat == "yaml" {
-			if response, err := kor.GetUnusedPvcsStructured(includeExcludeLists, clientset, outputFormat); err != nil {
-				fmt.Println(err)
-			} else {
-				fmt.Println(response)
-			}
+		if response, err := kor.GetUnusedPvcsStructured(includeExcludeLists, clientset, outputFormat); err != nil {
+			fmt.Println(err)
 		} else {
-			kor.GetUnusedPvcs(includeExcludeLists, clientset)
+			fmt.Println(response)
 		}
 	},
 }
